@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehension Quest - English Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0fdfa;
+            color: #1e293b;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .passage-text {
+            line-height: 1.8;
+            font-size: 1.05rem;
+        }
+        .highlight { background-color: #fef08a; padding: 0 4px; border-radius: 4px; }
+        
+        /* Custom Scrollbar for passage reading */
+        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-teal-600 text-white p-4 shadow-md flex justify-between items-center z-10">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-compass text-2xl"></i>
+            <h1 class="text-2xl font-bold">Comprehension Quest</h1>
+        </div>
+        <div id="stats-bar" class="hidden flex gap-6 items-center">
+            <div class="bg-teal-800 px-4 py-1 rounded-full font-bold">
+                <i class="fas fa-user mr-2"></i><span id="display-name">Player</span>
+            </div>
+            <div class="bg-amber-400 text-amber-900 px-4 py-1 rounded-full font-bold shadow-sm">
+                <i class="fas fa-star mr-2"></i><span id="score-display">0</span> XP
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow flex items-center justify-center p-4 md:p-8" id="app-container">
+        
+        <!-- Welcome Screen -->
+        <div id="screen-welcome" class="glass-panel max-w-lg w-full p-8 rounded-2xl text-center fade-in">
+            <i class="fas fa-book-reader text-6xl text-teal-500 mb-4"></i>
+            <h2 class="text-3xl font-bold mb-2">Ready for an Adventure?</h2>
+            <p class="text-slate-600 mb-6">Test your reading skills, earn XP, and become a Master Reader. Complete the tasks to generate your learning report.</p>
+            
+            <div class="text-left mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">Enter your name to begin:</label>
+                <input type="text" id="player-name" class="w-full px-4 py-3 rounded-lg border-2 border-teal-200 focus:border-teal-500 focus:outline-none transition-colors" placeholder="Your Name or Class ID">
+            </div>
+            <button onclick="startGame()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg">
+                Start Quest <i class="fas fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+
+        <!-- Level Screen (Split View for Text and Questions) -->
+        <div id="screen-game" class="hidden w-full max-w-6xl h-[80vh] flex flex-col md:flex-row gap-6 fade-in">
+            
+            <!-- Left Panel: Reading Passage -->
+            <div class="w-full md:w-1/2 glass-panel rounded-2xl flex flex-col overflow-hidden">
+                <div class="bg-slate-100 p-4 border-b border-slate-200 flex justify-between items-center">
+                    <h3 id="passage-title" class="font-bold text-lg text-slate-800"><i class="fas fa-file-alt text-teal-500 mr-2"></i>Reading Text</h3>
+                    <span id="level-indicator" class="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-1 rounded">Level 1</span>
+                </div>
+                <div id="passage-content" class="p-6 overflow-y-auto custom-scroll passage-text flex-grow bg-white">
+                    <!-- Text injected here -->
+                </div>
+            </div>
+
+            <!-- Right Panel: Questions -->
+            <div class="w-full md:w-1/2 glass-panel rounded-2xl flex flex-col overflow-hidden relative">
+                <div class="bg-teal-50 p-4 border-b border-teal-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-bold text-lg text-teal-900">Task Log</h3>
+                        <div class="text-sm font-bold text-teal-600">Progress: <span id="q-progress">1/5</span></div>
+                    </div>
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-teal-200 rounded-full h-2">
+                        <div id="progress-bar" class="bg-teal-500 h-2 rounded-full transition-all duration-500" style="width: 20%"></div>
+                    </div>
+                </div>
+
+                <div id="question-container" class="p-6 overflow-y-auto custom-scroll flex-grow flex flex-col">
+                    <!-- Question injected here -->
+                </div>
+                
+                <!-- Feedback overlay (Hidden by default) -->
+                <div id="feedback-overlay" class="hidden absolute inset-0 bg-white/95 z-20 flex flex-col items-center justify-center p-6 text-center overflow-y-auto custom-scroll">
+                    <div id="feedback-icon" class="text-6xl mb-4"></div>
+                    <h3 id="feedback-title" class="text-2xl font-bold mb-2"></h3>
+                    <p id="feedback-message" class="text-lg text-slate-600 mb-4 max-w-md"></p>
+                    
+                    <!-- Model Answer & Worksheet Reminder -->
+                    <div id="model-answer-section" class="hidden w-full max-w-md bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6 text-left shadow-sm">
+                        <p class="font-bold text-sm text-blue-800 mb-1"><i class="fas fa-book-open mr-1"></i> Model Answer:</p>
+                        <p id="model-answer-text" class="text-slate-800 font-medium mb-3 italic"></p>
+                        <div class="bg-blue-100 text-blue-900 text-sm font-bold p-2 rounded flex items-center justify-center gap-2">
+                            <i class="fas fa-pencil-alt"></i> Please copy this correct answer into your worksheet!
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button id="retry-btn" onclick="retryQuestion()" class="hidden bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                            Try Again (Half XP) <i class="fas fa-redo ml-2"></i>
+                        </button>
+                        <button id="next-btn" onclick="nextQuestion()" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                            Continue <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- End Screen / Report -->
+        <div id="screen-end" class="hidden glass-panel w-full max-w-4xl p-8 rounded-2xl fade-in flex flex-col max-h-[90vh]">
+            <div class="text-center mb-6">
+                <i class="fas fa-trophy text-6xl text-amber-400 mb-4 drop-shadow-md"></i>
+                <h2 class="text-3xl font-bold text-slate-800">Quest Complete!</h2>
+                <p class="text-lg text-slate-600 mt-2">You earned <span id="final-score" class="font-bold text-amber-600 text-2xl"></span> XP</p>
+            </div>
+            
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4 flex-grow overflow-y-auto custom-scroll relative">
+                <div class="flex justify-between items-center mb-4 sticky top-0 bg-slate-50 pb-2 border-b border-slate-200">
+                    <h3 class="font-bold text-lg text-slate-800">Teacher Submission Report</h3>
+                    <button onclick="copyReport()" id="copy-btn" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded text-sm font-bold transition">
+                        <i class="fas fa-copy mr-2"></i>Copy to Clipboard
+                    </button>
+                </div>
+                <pre id="report-content" class="whitespace-pre-wrap font-mono text-sm text-slate-700"></pre>
+            </div>
+            
+            <p class="text-center text-sm text-slate-500 mt-2">Copy the report above and submit it to your teacher via your learning platform.</p>
+        </div>
+
+    </main>
+
+    <script>
+        const levels = [
+            {
+                level: "Stage 0: Training",
+                title: "Task A: Recap of Question Types",
+                text: `<div class="space-y-4 text-slate-700">
+                        <p class="font-bold text-lg text-teal-800 border-b border-teal-200 pb-2"><i class="fas fa-bullseye mr-2"></i>Comprehension Strategy Guide</p>
+                        
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 shadow-sm">
+                            <h4 class="font-bold text-blue-900 mb-1"><i class="fas fa-search mr-2"></i>1. Literal Questions</h4>
+                            <p class="text-sm">The answer is <strong>right there</strong> in the text. Look for keywords in the question, find them in the passage, and extract the facts directly.</p>
+                        </div>
+                        
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-100 shadow-sm">
+                            <h4 class="font-bold text-purple-900 mb-1"><i class="fas fa-brain mr-2"></i>2. Inferential Questions</h4>
+                            <p class="text-sm">You need to <strong>read between the lines</strong>. The answer isn't stated directly. Look for clues in the text (often starts with "Why do you think..." or "What does this suggest...").</p>
+                        </div>
+                        
+                        <div class="bg-orange-50 p-4 rounded-lg border border-orange-100 shadow-sm">
+                            <h4 class="font-bold text-orange-900 mb-1"><i class="fas fa-pen-nib mr-2"></i>3. In Your Own Words</h4>
+                            <p class="text-sm">Explain the meaning <strong>without copying</strong> the original words from the passage. You must substitute the main keywords with appropriate synonyms.</p>
+                        </div>
+                        
+                        <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100 shadow-sm">
+                            <h4 class="font-bold text-emerald-900 mb-1"><i class="fas fa-quote-left mr-2"></i>4. Exact Phrase</h4>
+                            <p class="text-sm">Quote the <strong>exact words</strong> from the passage. Do not add extra words or change the spelling. Pay strict attention to word limits (e.g., "Which 3-word phrase...").</p>
+                        </div>
+                       </div>`,
+                questions: [
+                    {
+                        type: "mcq",
+                        q: "When a question asks you to 'Explain in your own words', what MUST you avoid doing?",
+                        options: [
+                            "Using synonyms to explain the meaning.",
+                            "Lifting phrases directly from the passage.",
+                            "Writing your answer in a complete sentence.",
+                            "Checking the marks allocated to the question."
+                        ],
+                        answer: 1,
+                        modelAnswer: "You must avoid lifting phrases directly from the passage.",
+                        rationale: "For 'Own Words' questions, you will lose marks if you copy the original phrasing from the text. You must use synonyms!"
+                    },
+                    {
+                        type: "mcq",
+                        q: "Look at this sample question: <em>'Why do you think the author described the old house as haunting?'</em><br><br>What type of question is this?",
+                        options: [
+                            "Literal",
+                            "Inferential",
+                            "Exact Phrase",
+                            "True/False"
+                        ],
+                        answer: 1,
+                        modelAnswer: "Inferential.",
+                        rationale: "Phrases like 'Why do you think...' or 'What does this suggest...' are classic Inferential questions. The answer isn't stated directly; you have to combine text clues with your own reasoning."
+                    },
+                    {
+                        type: "mcq",
+                        q: "Which of the following is an example of an 'Exact Phrase' question?",
+                        options: [
+                            "How did the boy feel when he saw the dog?",
+                            "Explain the boy's reaction in your own words.",
+                            "Which 4-word phrase in paragraph 2 shows that the boy was terrified?",
+                            "Do you agree with the boy's decision? Give a reason."
+                        ],
+                        answer: 2,
+                        modelAnswer: "Which 4-word phrase in paragraph 2 shows that the boy was terrified?",
+                        rationale: "Exact phrase questions usually ask for a specific quote, word, or phrase limit, requiring you to lift directly from the text."
+                    },
+                    {
+                        type: "mcq",
+                        q: "If an 'Exact Phrase' question asks for a '3-word phrase', but you answer with a 6-word sentence that contains those 3 words, what will happen?",
+                        options: [
+                            "You get full marks because the correct words are in there.",
+                            "You get zero marks for 'excess copying'.",
+                            "You get bonus marks for writing a complete sentence.",
+                            "The examiner will just ignore the extra words."
+                        ],
+                        answer: 1,
+                        modelAnswer: "You get zero marks for excess copying.",
+                        rationale: "In Exact Phrase questions, precision is everything! Adding extra words beyond what is asked is called 'excess copying' and will result in 0 marks."
+                    },
+                    {
+                        type: "mcq",
+                        q: "Read this sample question: <em>'According to paragraph 2, what three items did Sarah pack in her bag?'</em><br><br>This is a <strong>Literal</strong> question. How should you answer it?",
+                        options: [
+                            "Guess the answer based on what a person usually packs for a trip.",
+                            "Replace the items mentioned in the text with your own synonyms.",
+                            "Find paragraph 2 and extract the exact three items mentioned in the text.",
+                            "Write a long paragraph explaining why she packed those items."
+                        ],
+                        answer: 2,
+                        modelAnswer: "Find paragraph 2 and extract the exact three items mentioned in the text.",
+                        rationale: "For Literal questions, the facts are 'right there' in the text. You do not need to use your own words or guess—just find the facts and extract them."
+                    }
+                ]
+            },
+            {
+                level: "Task 2",
+                title: "Circus Animals",
+                text: `<p>Man treats animals with little respect. This is clearly demonstrated in the way animals have been used to entertain human audiences in circuses. Think of the unnatural acts that animals are put through – huge and powerful bears reduced to wearing little skirts and bowing, and lions and tigers made to jump through burning hoops. In certain zoos, animals have been deliberately trained to perform similar acts for visitors.</p>
+                <br>
+                <p>It is true that some zoos use animal shows to educate the public about endangered species and raise money for conservation efforts. However, not all animal performances are meaningful or educational. Some shows focus mainly on entertaining audiences and do not reflect the animals' natural behaviours or abilities. Perhaps the fact that these animals are in some ways superior to man makes it satisfying for man to be able to show his dominion over them.</p>`,
+                questions: [
+                    {
+                        type: "literal",
+                        q: "[Literal] According to the passage, what are two examples of tricks that animals are trained to perform?",
+                        keywords: [["skirts"], ["bowing"], ["jump"], ["hoops", "burning"]],
+                        reqMatches: 2,
+                        modelAnswer: "1) Huge bears wearing little skirts and bowing. 2) Lions and tigers made to jump through burning hoops.",
+                        hint: "Extract the exact tricks mentioned for the bears and the lions/tigers. Don't copy the whole paragraph!"
+                    },
+                    {
+                        type: "inferential",
+                        q: "[Vocabulary-Inferential] What does the phrase 'unnatural acts' (paragraph 1) suggest about the tricks performed by circus animals?",
+                        keywords: [["against", "not normal"], ["innate", "instincts", "normal", "wild", "nature", "behaviors"]],
+                        reqMatches: 1,
+                        modelAnswer: "It suggests that these tricks go against the innate behaviors and physical instincts of the animals.",
+                        hint: "If something is 'unnatural', how does it relate to the animal's normal instincts?"
+                    },
+                    {
+                        type: "inferential",
+                        q: "[Inferential] Why do you think some people support animal shows despite the concerns raised in the passage?",
+                        keywords: [["educational", "educate", "learn"], ["endangered"], ["funds", "money", "raise"], ["conservation"]],
+                        reqMatches: 2,
+                        modelAnswer: "They believe the shows serve an educational purpose about endangered species and help generate necessary funds for wildlife conservation efforts.",
+                        hint: "Look at the start of paragraph 2. What positive things do these shows achieve?"
+                    },
+                    {
+                        type: "own-words",
+                        q: "[Own Words] Explain what the writer means by 'the fact that these animals are in some ways superior to man makes it satisfying for man to be able to show his dominion over them.'",
+                        forbidden: ["satisfying", "dominion"],
+                        keywords: [["enjoy", "pleased", "like", "happy"], ["control", "authority", "power", "rule"], ["strength", "capabilities", "better", "stronger"]],
+                        reqMatches: 2,
+                        modelAnswer: "Humans enjoy proving their control and authority over animals that have greater strength or capabilities than themselves.",
+                        hint: "What does 'satisfying' mean here? What does 'dominion' mean? Use your own words."
+                    }
+                ]
+            },
+            {
+                level: "Task 3",
+                title: "Penguin Chicks Stand Their Ground",
+                text: `<p><strong>Paragraph 1:</strong><br>The hardest part of becoming independent is leaving home. The emperor penguin chicks are about to take the biggest step in their young lives. Left alone by their once doting parents, they must leave their icy birthplace and make their way to the sea.</p><br>
+                <p><strong>Paragraph 2:</strong><br>Every test they face pull in skills they will need later in life but one challenge stops them in their tracks - a giant petrel. They try to flee but running isn’t an emperor’s strong point. A slip is all the petrel needs. The chick is grabbed by its neck feathers, but it managed to escape. The emperor penguins form a defensive circle and prepare to stand their ground. Despite their chick like appearance, they are close to a meter tall, quite a size even for a giant petrel. The chick towers to a full height, protecting those behind. His defiance buys time. It is a standoff.</p><br>
+                <p><strong>Paragraph 3:</strong><br>Then, as if from nowhere, an adelie, the feistiest penguin in the world fearlessly puts himself between the chicks and the petrel. Even petrels don’t mess with the adelie, so it left. The plucky rescuer accompanies the chicks to the sea.</p>`,
+                questions: [
+                    {
+                        type: "mcq",
+                        q: "Identify the Topic Sentence for <strong>Paragraph 1</strong>:",
+                        options: [
+                            "Left alone by their once doting parents...",
+                            "The emperor penguin chicks are about to take the biggest step in their young lives.",
+                            "The hardest part of becoming independent is leaving home.",
+                            "...they must leave their icy birthplace and make their way to the sea."
+                        ],
+                        answer: 1,
+                        modelAnswer: "The emperor penguin chicks are about to take the biggest step in their young lives.",
+                        rationale: "This introduces the overarching main idea of the paragraph specifically about the penguins."
+                    },
+                    {
+                        type: "mcq",
+                        q: "Identify the Topic Sentence for <strong>Paragraph 2</strong>:",
+                        options: [
+                            "Every test they face pull in skills they will need later in life but one challenge stops them in their tracks - a giant petrel.",
+                            "They try to flee but running isn’t an emperor’s strong point.",
+                            "The emperor penguins form a defensive circle and prepare to stand their ground.",
+                            "His defiance buys time. It is a standoff."
+                        ],
+                        answer: 0,
+                        modelAnswer: "Every test they face pull in skills they will need later in life but one challenge stops them in their tracks - a giant petrel.",
+                        rationale: "It sets up the main conflict of the paragraph: the challenge of the giant petrel."
+                    },
+                    {
+                        type: "literal",
+                        q: "Identify TWO details from Paragraph 2 that show the chicks were in danger.",
+                        keywords: [["grabbed"], ["neck feathers"], ["defensive circle"], ["stand their ground", "standoff", "predator"]],
+                        reqMatches: 2,
+                        modelAnswer: "1) A giant petrel targeted a chick, and the chick was grabbed by its neck feathers. 2) The emperor penguin chicks were forced to form a defensive circle and stand their ground.",
+                        hint: "Look for the physical actions the petrel took against the chick, and how the group had to react."
+                    },
+                    {
+                        type: "inferential",
+                        q: "Based on context, what does the phrase 'A slip' mean in the sentence: 'A slip is all the petrel needs'?",
+                        keywords: [["loss", "lose"], ["balance"], ["minor error", "mistake"], ["fall", "stumble"]],
+                        reqMatches: 1,
+                        modelAnswer: "A loss of balance, or a minor error made while trying to escape.",
+                        hint: "Think about what happens physically when you try to run but aren't good at it."
+                    },
+                    {
+                        type: "inferential",
+                        q: "Based on context, what does 'standoff' mean when it says: 'It is a standoff'?",
+                        keywords: [["deadlock", "stuck"], ["tense", "tension"], ["neither side", "no one"], ["advantage", "move"]],
+                        reqMatches: 1,
+                        modelAnswer: "A deadlock or tense situation where neither side can make a move or gain an advantage.",
+                        hint: "When two sides are facing each other and neither is attacking or retreating, what is that called?"
+                    }
+                ]
+            },
+             {
+                level: "Task 4",
+                title: "Evaluating Arguments (The Zoo Debate)",
+                text: `<p>Zoos are necessary and must continue to exist because they help protect endangered animals through breeding programmes. Endangered species such as giant pandas and California condors have been successfully bred in zoos, increasing their chances of survival. Not only so, zoos also educate the public about wildlife, giving visitors a chance to learn about animals and the threats they face. By doing so, zoos encourage more people to support conservation efforts. Although It is true that zoos often keep animals in enclosures that are much smaller and less stimulating than their natural habitats, this may still be better than allowing these species to face extinction.</p>
+                <br>
+                <div class="bg-blue-50 p-3 rounded border border-blue-200">
+                <strong>Megan:</strong> We should support zoos as they help with animal conservation.<br>
+                <strong>Randy:</strong> No, we should reconsider having zoos as they affect animals’ well-being.
+                </div>`,
+                questions: [
+                    {
+                        type: "literal",
+                        q: "Give TWO pieces of evidence from the text to support <strong>Megan’s</strong> view.",
+                        keywords: [["protect", "saving", "breed", "breeding"], ["educate", "learn"], ["support", "conservation"]],
+                        reqMatches: 2,
+                        modelAnswer: "1) Zoos assist in saving endangered animals from extinction through successful breeding programmes. 2) Zoos educate the public about wildlife, encouraging support for conservation.",
+                        hint: "Find two positive things the passage says zoos do for animals and the public."
+                    },
+                    {
+                        type: "literal",
+                        q: "Give ONE piece of evidence from the text to support <strong>Randy’s</strong> view.",
+                        keywords: [["enclosures", "cages"], ["smaller"], ["less stimulating"], ["well-being", "habitats"]],
+                        reqMatches: 2,
+                        modelAnswer: "Zoos keep animals in physical enclosures that are significantly smaller and less stimulating than their natural wild habitats, affecting their well-being.",
+                        hint: "Find the negative description of where the animals are kept."
+                    }
+                ]
+            },
+            {
+                level: "Task 5",
+                title: "The Dolphin Rescuer",
+                text: `<p><strong>[1]</strong> In July 2024, rescue officers were searching the waters off the North Island of New Zealand for a kayaker who had been reported missing... During the operation, the officers noticed something unusual. A bottlenose dolphin repeatedly swam close to their rescue boat before darting away and then returning again. At first, the officers assumed that the dolphin was simply displaying its natural curiosity, as dolphins are known to approach boats and interact with humans.</p><br>
+                <p><strong>[2]</strong> However, the dolphin continued the same behaviour for almost twenty minutes and appeared determined to lead them in a particular direction. Curious about the animal's actions, the officers decided to follow it. Several members of the rescue team later reported that the animal frequently turned its head towards the boat, as if checking whether they were following. According to the officers, the dolphin maintained a steady pace and remained close enough to be seen at all times.</p><br>
+                <p><strong>[3]</strong> Eventually, the dolphin guided the rescue team to an area nearly two kilometres from where the search had begun. There, the officers spotted an overturned kayak floating in the water. Nearby, they found the missing kayaker clinging to a navigation buoy. The man had spent several hours in the cold sea and was suffering from exhaustion and mild hypothermia. Rescue workers quickly brought him aboard their vessel, where he received medical attention before being transported safely back to shore.</p><br>
+                <p><strong>[4]</strong> News of the incident quickly spread throughout New Zealand and attracted international attention. Many people praised the dolphin's actions and described the animal as intelligent, compassionate and heroic. Marine biologists, however, urged caution when interpreting the event. They explained that it was impossible to know the dolphin's intentions with certainty. From a scientific point of view, the dolphin might simply have been investigating the unusual situation in its environment and continued swimming near the boat because it was curious or excited.</p><br>
+                <p><strong>[5]</strong> Nonetheless, the incident reminded many people of the remarkable connections that can exist between humans and animals. Although experts cannot say for certain why the dolphin behaved in this way, the event highlighted the extraordinary abilities of wildlife. Stories such as this encourage people to appreciate animals not only for their beauty but also for the complex behaviours that continue to surprise scientists around the world.</p>`,
+                questions: [
+                    {
+                        type: "exact-phrase",
+                        q: "In paragraph 1, which 3-word phrase tells us that the rescue officers found the dolphin's behaviour strange?",
+                        answers: ["something unusual"],
+                        modelAnswer: "something unusual",
+                        hint: "Look for a 3-word phrase near the middle of paragraph 1."
+                    },
+                    {
+                        type: "own-words",
+                        q: "[Own Words] Explain what the dolphin did repeatedly in paragraph 1.",
+                        forbidden: ["repeatedly swam", "darting away", "returning again"],
+                        keywords: [["approached", "came near", "close to"], ["swam off", "left", "rapidly", "away"], ["came back", "returned", "again"]],
+                        reqMatches: 2,
+                        modelAnswer: "The dolphin continually approached the boat, swam off rapidly, and returned again.",
+                        hint: "Use your own words for 'darting away' and 'returning'."
+                    },
+                    {
+                        type: "literal",
+                        q: "According to paragraph 1, why did the officers not immediately follow the dolphin?",
+                        keywords: [["natural curiosity", "curious"], ["interacting", "approach", "normally", "usually"]],
+                        reqMatches: 1,
+                        modelAnswer: "They initially assumed the dolphin was simply displaying natural curiosity and interacting with the boat as dolphins normally do.",
+                        hint: "What did the officers assume the dolphin was doing at first?"
+                    },
+                    {
+                        type: "literal",
+                        q: "According to paragraph 2, what made the officers decide to follow the dolphin?",
+                        keywords: [["persisted", "continued", "same behavior"], ["twenty minutes"], ["determined"], ["guide", "lead", "direction"]],
+                        reqMatches: 2,
+                        modelAnswer: "The dolphin persisted with the exact same behavior for nearly twenty minutes and seemed determined to guide them in a specific direction.",
+                        hint: "Look at the first sentence of paragraph 2. How long did it do this, and what did it seem to want?"
+                    },
+                     {
+                        type: "inferential",
+                        q: "[Inferential] Why do you think 'the dolphin frequently turned its head towards the boat' in paragraph 2?",
+                        keywords: [["check", "ensure", "make sure"], ["following", "behind", "active"]],
+                        reqMatches: 2,
+                        modelAnswer: "The dolphin wanted to check and ensure that the rescue team was actively following it toward where the kayaker was located.",
+                        hint: "If you are leading someone, why do you look back?"
+                    },
+                     {
+                        type: "literal",
+                        q: "According to paragraph 3, how was the kayaker eventually found?",
+                        keywords: [["overturned kayak", "boat"], ["clinging", "holding"], ["buoy"]],
+                        reqMatches: 2,
+                        modelAnswer: "The dolphin led the team to an area nearly two kilometres away where they spotted an overturned kayak and found the missing kayaker clinging to a navigation buoy.",
+                        hint: "What was he holding onto? What was nearby?"
+                    },
+                    {
+                        type: "own-words",
+                        q: "[Own Words] Explain why the kayaker required medical attention.",
+                        forbidden: ["exhaustion", "hypothermia"],
+                        keywords: [["fatigued", "tired", "energy"], ["low body temperature", "cold", "freezing", "chilly"]],
+                        reqMatches: 2,
+                        modelAnswer: "He was severely fatigued and experiencing dangerously low body temperature after staying in chilly waters for a long period.",
+                        hint: "What do 'exhaustion' and 'hypothermia' mean? Use your own words."
+                    },
+                    {
+                        type: "literal",
+                        q: "Sarah says: 'The dolphin clearly intended to help the kayaker.' Give one piece of evidence from Paragraph 2 that supports her view.",
+                        keywords: [["turned its head", "check"], ["steady pace"], ["lead", "direction"]],
+                        reqMatches: 1,
+                        modelAnswer: "The dolphin frequently turned its head back to check if the boat was following, OR it maintained a steady pace to guide them directly to the location.",
+                        hint: "What deliberate actions in paragraph 2 make it look like a planned rescue?"
+                    },
+                    {
+                        type: "inferential",
+                        q: "Jason says: 'We still do not know what the dolphin was thinking.' Explain how Jason would justify his view, with reference to paragraph 4.",
+                        keywords: [["impossible", "cannot determine", "know"], ["intentions", "thinking"], ["investigating", "curiosity", "excited"]],
+                        reqMatches: 2,
+                        modelAnswer: "Marine biologists noted that it is impossible to determine the dolphin's intentions with certainty, as it might simply have been investigating an unusual situation out of curiosity or excitement.",
+                        hint: "What did the marine biologists say about the dolphin's true intentions?"
+                    },
+                     {
+                        type: "inferential",
+                        q: "[Inferential] Why do you think the incident “attracted international attention” (Paragraph 4)?",
+                        keywords: [["rare", "unusual", "remarkable", "special"], ["wild animal", "dolphin"], ["rescue", "save", "human"]],
+                        reqMatches: 2,
+                        modelAnswer: "It was a rare and remarkable story involving an extraordinary interaction between a wild animal seemingly acting to rescue a human life.",
+                        hint: "Why would news stations around the world care about this specific animal story?"
+                    },
+                    {
+                        type: "exact-phrase",
+                        q: "In paragraph 5, which phrase suggests that this incident has helped people notice how remarkable animals can be?",
+                        answers: ["reminded many people of the remarkable connections", "highlighted the extraordinary abilities of wildlife"],
+                        modelAnswer: "reminded many people of the remarkable connections (OR: highlighted the extraordinary abilities of wildlife)",
+                        hint: "Look for a phrase that mentions 'remarkable' or 'extraordinary'."
+                    }
+                ]
+            }
+        ];
+
+        let playerName = "";
+        let currentLevelIdx = 0;
+        let currentQuestionIdx = 0;
+        let score = 0;
+        let currentAttempts = 0;
+        
+        let studentReport = [];
+        
+        // DOM Elements
+        const elWelcome = document.getElementById('screen-welcome');
+        const elGame = document.getElementById('screen-game');
+        const elEnd = document.getElementById('screen-end');
+        const elStats = document.getElementById('stats-bar');
+        
+        const elPassageTitle = document.getElementById('passage-title');
+        const elLevelIndicator = document.getElementById('level-indicator');
+        const elPassageContent = document.getElementById('passage-content');
+        const elQuestionContainer = document.getElementById('question-container');
+        const elProgress = document.getElementById('progress-bar');
+        const elQProgressTxt = document.getElementById('q-progress');
+        
+        const elFeedbackOverlay = document.getElementById('feedback-overlay');
+        const elFeedbackIcon = document.getElementById('feedback-icon');
+        const elFeedbackTitle = document.getElementById('feedback-title');
+        const elFeedbackMessage = document.getElementById('feedback-message');
+        const elModelAnswerSection = document.getElementById('model-answer-section');
+        const elModelAnswerText = document.getElementById('model-answer-text');
+        const elNextBtn = document.getElementById('next-btn');
+        const elRetryBtn = document.getElementById('retry-btn');
+
+        let currentQuestionData = null;
+
+        function startGame() {
+            const nameInput = document.getElementById('player-name').value.trim();
+            if(!nameInput) {
+                alert("Please enter your name to begin the quest!");
+                return;
+            }
+            playerName = nameInput;
+            document.getElementById('display-name').textContent = playerName;
+            
+            elWelcome.classList.add('hidden');
+            elStats.classList.remove('hidden');
+            elGame.classList.remove('hidden');
+            
+            loadLevel();
+        }
+
+        function updateScore(points) {
+            score += points;
+            const sd = document.getElementById('score-display');
+            sd.textContent = score;
+            
+            sd.parentElement.classList.add('scale-110', 'transition', 'duration-200');
+            setTimeout(() => {
+                sd.parentElement.classList.remove('scale-110');
+            }, 200);
+        }
+
+        function loadLevel() {
+            if(currentLevelIdx >= levels.length) {
+                endGame();
+                return;
+            }
+
+            const levelData = levels[currentLevelIdx];
+            currentQuestionIdx = 0;
+            
+            elPassageTitle.innerHTML = `<i class="fas fa-file-alt text-teal-500 mr-2"></i>${levelData.title}`;
+            elLevelIndicator.textContent = levelData.level;
+            elPassageContent.innerHTML = levelData.text;
+
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const levelData = levels[currentLevelIdx];
+            if(currentQuestionIdx >= levelData.questions.length) {
+                currentLevelIdx++;
+                loadLevel();
+                return;
+            }
+
+            currentQuestionData = levelData.questions[currentQuestionIdx];
+            currentAttempts = 0; // Reset attempts for new question
+            
+            const totalQ = levelData.questions.length;
+            elQProgressTxt.textContent = `${currentQuestionIdx + 1} / ${totalQ}`;
+            elProgress.style.width = `${((currentQuestionIdx) / totalQ) * 100}%`;
+
+            let qHTML = `<h4 class="font-bold text-lg mb-4 text-slate-800">${currentQuestionData.q}</h4>`;
+
+            if(currentQuestionData.type === 'mcq') {
+                qHTML += `<div class="flex flex-col gap-3">`;
+                currentQuestionData.options.forEach((opt, idx) => {
+                    qHTML += `<button onclick="submitMCQ(${idx})" class="text-left bg-white border-2 border-slate-200 hover:border-teal-500 hover:bg-teal-50 p-4 rounded-xl transition-colors font-medium text-slate-700 shadow-sm">${opt}</button>`;
+                });
+                qHTML += `</div>`;
+            } 
+            else {
+                qHTML += `
+                    <div class="flex flex-col flex-grow">
+                        <textarea id="open-answer" class="w-full flex-grow min-h-[150px] p-4 rounded-xl border-2 border-slate-200 focus:border-teal-500 focus:outline-none resize-none mb-4 custom-scroll" placeholder="Type your precise answer here..."></textarea>
+                        <button onclick="submitOpenEnded()" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow transition mt-auto">Submit Answer</button>
+                    </div>
+                `;
+            }
+
+            elQuestionContainer.innerHTML = qHTML;
+        }
+
+        function checkOpenAnswer(studentAns, qData) {
+            let ans = studentAns.toLowerCase();
+            let isExcessive = false;
+
+            // Penalty for excess copying on literal/inferential
+            if (['literal', 'inferential'].includes(qData.type)) {
+                let words = ans.split(/\s+/).length;
+                if (words > 40) isExcessive = true;
+            }
+
+            if (qData.type === 'exact-phrase') {
+                let match = qData.answers.some(a => ans.includes(a.toLowerCase()));
+                if (match && ans.split(/\s+/).length > 8) { 
+                    return { correct: false, msg: "You copied too much! Please extract ONLY the specific phrase required without extra words." };
+                }
+                if (match) return { correct: true, msg: "Perfect extraction!" };
+                return { correct: false, msg: "That's not the correct phrase. Look closely at the text." };
+            }
+
+            if (qData.type === 'own-words') {
+                if (qData.forbidden) {
+                    for (let phrase of qData.forbidden) {
+                        if (ans.includes(phrase.toLowerCase())) {
+                            return { correct: false, msg: `Careful! You lifted the phrase "${phrase}" directly from the passage. You must use your own words.` };
+                        }
+                    }
+                }
+            }
+
+            let matchCount = 0;
+            if (qData.keywords) {
+                for (let kwGroup of qData.keywords) {
+                    if (Array.isArray(kwGroup)) {
+                        if (kwGroup.some(kw => ans.includes(kw.toLowerCase()))) matchCount++;
+                    } else {
+                        if (ans.includes(kwGroup.toLowerCase())) matchCount++;
+                    }
+                }
+            }
+
+            let required = qData.reqMatches || 1;
+            if (matchCount >= required) {
+                if (isExcessive) {
+                    return { correct: false, msg: "You have the right idea, but you copied too much unnecessary text! Marks are deducted for excess copying. Be precise." };
+                }
+                return { correct: true, msg: "Excellent precise answer!" };
+            } else {
+                 return { correct: false, msg: "Not quite. " + (qData.hint || "") };
+            }
+        }
+
+        function submitMCQ(selectedIndex) {
+            currentAttempts++;
+            const isCorrect = selectedIndex === currentQuestionData.answer;
+            handleResult(isCorrect, currentQuestionData.options[selectedIndex]);
+        }
+
+        function submitOpenEnded() {
+            const inputEl = document.getElementById('open-answer');
+            const studentAns = inputEl.value.trim();
+            
+            if(!studentAns) {
+                alert("Please type an answer before submitting.");
+                return;
+            }
+
+            currentAttempts++;
+            const evaluation = checkOpenAnswer(studentAns, currentQuestionData);
+            handleResult(evaluation.correct, studentAns, evaluation.msg);
+        }
+
+        function handleResult(isCorrect, studentAns, customMsg = "") {
+            elFeedbackOverlay.classList.remove('hidden');
+            
+            // Success
+            if (isCorrect) {
+                let xp = currentAttempts === 1 ? 100 : 50;
+                updateScore(xp);
+                
+                elFeedbackIcon.innerHTML = '<i class="fas fa-check-circle text-green-500 drop-shadow"></i>';
+                elFeedbackTitle.textContent = "Correct!";
+                elFeedbackTitle.className = "text-2xl font-bold mb-2 text-green-600";
+                elFeedbackMessage.innerHTML = `${customMsg || "Great job!"} <br><span class='text-amber-500 font-bold'>+${xp} XP</span>`;
+                
+                showModelAnswerAndContinue();
+                saveToReport(studentAns, true, xp);
+            } 
+            // Failed, but can retry
+            else if (currentAttempts === 1) {
+                elFeedbackIcon.innerHTML = '<i class="fas fa-search text-orange-500 drop-shadow"></i>';
+                elFeedbackTitle.textContent = "Let's review...";
+                elFeedbackTitle.className = "text-2xl font-bold mb-2 text-orange-600";
+                elFeedbackMessage.innerHTML = customMsg || "That's not it. " + (currentQuestionData.hint || "");
+                
+                elModelAnswerSection.classList.add('hidden');
+                elRetryBtn.classList.remove('hidden');
+                elNextBtn.classList.add('hidden');
+            }
+            // Failed twice
+            else {
+                elFeedbackIcon.innerHTML = '<i class="fas fa-times-circle text-red-500 drop-shadow"></i>';
+                elFeedbackTitle.textContent = "Not Quite.";
+                elFeedbackTitle.className = "text-2xl font-bold mb-2 text-red-600";
+                elFeedbackMessage.innerHTML = "You missed this one, but learn from the model answer below! <br><span class='text-slate-500 font-bold'>+0 XP</span>";
+                
+                showModelAnswerAndContinue();
+                saveToReport(studentAns, false, 0);
+            }
+        }
+
+        function showModelAnswerAndContinue() {
+            elRetryBtn.classList.add('hidden');
+            elNextBtn.classList.remove('hidden');
+            elModelAnswerSection.classList.remove('hidden');
+            elModelAnswerText.innerHTML = currentQuestionData.modelAnswer || currentQuestionData.rationale || "No model answer provided.";
+        }
+
+        function retryQuestion() {
+            elFeedbackOverlay.classList.add('hidden');
+        }
+
+        function nextQuestion() {
+            elFeedbackOverlay.classList.add('hidden');
+            currentQuestionIdx++;
+            loadQuestion();
+        }
+
+        function saveToReport(ans, correct, xp) {
+            studentReport.push({
+                level: levels[currentLevelIdx].level,
+                q: currentQuestionData.q,
+                type: currentQuestionData.type.toUpperCase(),
+                studentAns: ans,
+                isCorrect: correct,
+                pointsAwarded: xp
+            });
+        }
+
+        function endGame() {
+            elGame.classList.add('hidden');
+            elEnd.classList.remove('hidden');
+            document.getElementById('final-score').textContent = score;
+            generateReport();
+        }
+
+        function generateReport() {
+            let d = new Date();
+            let dateStr = d.toLocaleDateString() + " " + d.toLocaleTimeString();
+            
+            let rep = `=======================================\n`;
+            rep += `  COMPREHENSION QUEST - STUDENT REPORT\n`;
+            rep += `=======================================\n`;
+            rep += `Student Name : ${playerName}\n`;
+            rep += `Total Score  : ${score} XP\n`;
+            rep += `Date         : ${dateStr}\n\n`;
+            
+            let currentLvl = "";
+            
+            studentReport.forEach((item, index) => {
+                if(item.level !== currentLvl) {
+                    rep += `\n--- [ ${item.level.toUpperCase()} ] ---\n`;
+                    currentLvl = item.level;
+                }
+                
+                // Clean HTML tags from question for text report
+                let cleanQ = item.q.replace(/<[^>]*>?/gm, '');
+                
+                rep += `Q${index+1}: ${cleanQ}\n`;
+                rep += `> Answer: ${item.studentAns}\n`;
+                rep += `> Score : ${item.pointsAwarded} XP (${item.isCorrect === true ? 'Correct' : (item.isCorrect === false ? 'Incorrect' : item.isCorrect)})\n\n`;
+            });
+            
+            rep += `=======================================\n`;
+            rep += `End of Report\n`;
+            
+            document.getElementById('report-content').textContent = rep;
+        }
+
+        function copyReport() {
+            const reportTxt = document.getElementById('report-content').textContent;
+            navigator.clipboard.writeText(reportTxt).then(() => {
+                const btn = document.getElementById('copy-btn');
+                const orig = btn.innerHTML;
+                btn.innerHTML = `<i class="fas fa-check mr-2"></i>Copied!`;
+                btn.classList.add('bg-green-600');
+                btn.classList.remove('bg-slate-800', 'hover:bg-slate-900');
+                setTimeout(() => {
+                    btn.innerHTML = orig;
+                    btn.classList.remove('bg-green-600');
+                    btn.classList.add('bg-slate-800', 'hover:bg-slate-900');
+                }, 2000);
+            }).catch(err => {
+                alert("Failed to copy. Please select the text manually.");
+            });
+        }
+
+    </script>
+</body>
+</html>
